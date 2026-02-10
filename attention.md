@@ -433,18 +433,40 @@ In GDL, symmetry is important, and group theory is the language of symmetry.
     $$
     Where the integral part is the learned projection (convolution) from $k$ to $l$ and $\mathbb{W}$ part on the right is the message from $j$th to $i$th node.
 
-    This is also representable as a linear combination of other sorts, using the basis of $(\mathbb{W}_J^{lk})_{J=|k-l|}^{k+l}$. Now, the $J$ (resembling the total angular momentum symbol) coeffficient is a learnable function $\phi_J^{lk}:\mathbb{R}_{\geq0}\rightarrow\mathbb{R}$ of the radius $||\mathbf{x}||$
+    This is also representable as a linear combination of other sorts, using the basis of $(\mathbb{W}_J^{lk})_{J=|k-l|}^{k+l}$. Now, the $J$ (resembling the total angular momentum symbol) coefficient is a learnable function $\phi_J^{lk}:\mathbb{R}_{\geq0}\rightarrow\mathbb{R}$ of the radius $||\mathbf{x}||$
     $$
     \mathbb{W}^{lk}(\mathbf{x}) = \sum_{J=|k-l|}^{|k+l|}\phi^{lk}_J(||\mathbf{x}||)\mathbb{W}_J^{lk}\mathbf{x}, \quad \mathbb{W}_J^{lk}(\mathbf{x}) = \sum_{m=-J}^{J}Y_{Jm}(x/||\mathbf{x}||)Q_{Jm}^{lk}
     $$
-    $W_J^{lk}$ is formed by taking a linear combination of CLebsch-Gordna matrix $Q$. (This is not similar to addition of angular momentum. This IS addition of angualar momentum with different symbols).
-    $\mathbb{W}_J{lk}(0)\neq0$ only when $k=l$ or $J=0$ (selection rule), $\mathbb{W}^{ll}$ is a type 0
+    $W_J^{lk}$ is formed by taking a linear combination of Clebsch-Gordan matrix $Q$. (This is not similar to addition of angular momentum. This IS addition of angular momentum with different symbols).
+    $\mathbb{W}_J^{lk}(0)\neq0$ only when $k=l$ or $J=0$ (selection rule), $\mathbb{W}^{ll}$ is a type 0
     We can thus rewrite TFN layer as
     $$
     \mathbf{f}_{out,i}^{l} = w^{ll}\mathbf{f}^l_{in,i} +\sum_{k\geq 0}\sum_{j\neq i}^n\mathbb{W}^{lk}(\mathbf{x}_j-\mathbf{x}_i)\mathbf{f}^k_{in,j'}
     $$
-    Where the left term is the self-interaction term. The convolutions are now formed as a message passing form, with are concats/aggregations from all nodes and feature type(orbital). They form a nonlocal graph operation where the weights are functions on edges an the features $\mathbf{f}_i$ are node features.
-    The attention layer with unify the aspects of convolutions and gnn.
-    
-    
+    Where the left term is the self-interaction term. The convolutions are now formed as a message passing form, with are concats/aggregations from all nodes and feature type(orbital). They form a nonlocal graph operation where the weights are functions on edges and the features $\mathbf{f}_i$ are node features.
+    The attention layer will unify the aspects of convolutions and gnn.
+
+  - Method
+    1. Neighbourhoods
+    Given a point cloud $\mathbf{x_i},\mathbf{f}_i$, the collection of neighbourhoods centered on each point $i$ is introduced. They are computed with NN methods or predefined, ex with bond information for molecules.
+    2. The SE(3)-Transformer
+    It consists of three components.
+      - Edge-wise attention weights $\alpha_{ij}$, constructed to be SE(3) invariant on each edge ij
+      - Edge-wise SE(3)-equivariant value messages, which propagates information between the nodes likewise with the TFN convolution
+      - Linear/attentive self-interaction layer (Self interaction layer is important because nodes tend to forget the self information with epochs, or so that i've heard)
+        Attention is performed on a per-neighbourhood basis, and is as follows
+        $$
+        \mathbf{f}_{out,i}^l = \mathbb{W}_V^{ll}\mathbf{f}_{in,i}^l+\sum_{k\geq 0}\sum_{j\in\mathcal{N}_i}\alpha_{ij}\mathbb{W}_V^{lk}(\mathbf{x}_j-\mathbf{x}_i)\mathbf{f}_{in,j}^k
+        $$
+        Removing the attention weights $\alpha_{ij}$ gives TFN, removing $\mathbb{W}_V$ dependence on $\mathbf{x}_j-\mathbf{x}_i$ yields the conventional attention mechanism.
+        In order for the total mechanism to be SE(3) invariant, $\alpha_{ij}$ should also be invariant. This is achieved via a normalized inner product between $\mathbf{q}_i$, at node $i$ and key vectors $\{\mathbf{k}_{ij}\}_{j\in\mathcal{N}_i}$ along each edge $ij$ in the neighbourhood $\mathcal{N}_i$, with
+        $$
+        \alpha_{ij}=\frac{exp(\mathbf{q}_i^T\mathbf{k}_{ij})}{\sum_{j'\in\mathcal{N}_i}exp(\mathbf{q}_i^T\mathbf{k}_{ij'})}, \quad \mathbf{q}_i = \oplus_{l\geq 0}\sum_{k\geq0}\mathbb{W}_Q^{lk}\mathbf{f}_{in,i}^k,\quad \mathbf{k}_{ij}=\oplus_{l\geq0}\sum_{k\geq0}\mathbb{W}_K^{lk}(\mathbf{x}_j-\mathbf{x}_i)\mathbf{f}_{in,j}^k
+        $$
+        $\oplus$ is the direct sum (vector-concat). $\mathbb{W}$ are of the TFN type.
+
+        Compare with the attention is all you need funtion
+
+        Why is $\alpha_{ij}$ invariant?
+        o
 
